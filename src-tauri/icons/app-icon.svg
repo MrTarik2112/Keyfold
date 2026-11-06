@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1024" height="1024" viewBox="0 0 1024 1024" role="img" aria-label="Keyfold">
+  <rect width="1024" height="1024" rx="224" fill="#08090a"/>
+  <!-- Bow: a key's ring with a folded top-right corner. -->
+  <path d="M352 208h248l88 88v160c0 26-21 48-48 48H352c-27 0-48-22-48-48V256c0-27 21-48 48-48z" fill="#E4F222"/>
+  <!-- Folded flap. -->
+  <path d="M600 208l88 88h-88z" fill="#A8B31A"/>
+  <!-- Bow opening. -->
+  <circle cx="500" cy="352" r="66" fill="#08090a"/>
+  <!-- Stem. -->
+  <rect x="462" y="440" width="88" height="376" rx="44" fill="#E4F222"/>
+  <!-- Teeth. -->
+  <rect x="550" y="636" width="104" height="48" rx="24" fill="#E4F222"/>
+  <rect x="550" y="724" width="72" height="48" rx="24" fill="#E4F222"/>
+</svg>

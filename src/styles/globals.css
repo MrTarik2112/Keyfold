@@ -1,0 +1,147 @@
+@import './tokens.css';
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  * {
+    box-sizing: border-box;
+  }
+
+  html,
+  body,
+  #root {
+    height: 100%;
+  }
+
+  html {
+    color-scheme: dark;
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
+  }
+
+  body {
+    margin: 0;
+    background: var(--bg-0);
+    color: var(--text-1);
+    font-family: Inter, system-ui, sans-serif;
+    font-size: 14px;
+    font-feature-settings:
+      'cv01' on,
+      'ss03' on,
+      'zero' on;
+    letter-spacing: -0.01em;
+    line-height: 1.5;
+    overscroll-behavior: none;
+    user-select: none;
+  }
+
+  h1,
+  h2,
+  h3 {
+    font-weight: 510;
+    letter-spacing: -0.012em;
+  }
+
+  input,
+  textarea,
+  select {
+    user-select: text;
+  }
+
+  ::selection {
+    background: rgba(228, 242, 34, 0.24);
+    color: var(--text-0);
+  }
+
+  :focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 2px;
+  }
+
+  ::-webkit-scrollbar {
+    width: 10px;
+    height: 10px;
+  }
+
+  ::-webkit-scrollbar-thumb {
+    background: var(--border);
+    border: 3px solid transparent;
+    border-radius: 999px;
+    background-clip: content-box;
+  }
+
+  ::-webkit-scrollbar-thumb:hover {
+    background: var(--border-strong);
+    background-clip: content-box;
+    border: 3px solid transparent;
+  }
+
+  ::-webkit-scrollbar-track {
+    background: transparent;
+  }
+}
+
+@layer components {
+  .secret {
+    font-family: 'JetBrains Mono', ui-monospace, monospace;
+    font-size: 13px;
+    font-variant-ligatures: none;
+    letter-spacing: -0.013em;
+  }
+
+  .tabular {
+    font-variant-numeric: tabular-nums;
+  }
+
+  .drag-region {
+    -webkit-app-region: drag;
+    app-region: drag;
+  }
+
+  .no-drag {
+    -webkit-app-region: no-drag;
+    app-region: no-drag;
+  }
+
+  .hairline {
+    box-shadow: inset 0 0 0 1px var(--border);
+  }
+
+  .accent-rail {
+    box-shadow: inset 2px 0 0 var(--accent);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+.compact .keyfold-row {
+  padding-top: 6px;
+  padding-bottom: 6px;
+}
+
+.compact .keyfold-card {
+  padding: 12px;
+}
+
+.compact .keyfold-nav-row {
+  padding-top: 3px;
+  padding-bottom: 3px;
+}
+
+.reduce-motion *,
+.reduce-motion *::before,
+.reduce-motion *::after {
+  animation-duration: 0.01ms !important;
+  animation-iteration-count: 1 !important;
+  transition-duration: 0.01ms !important;
+}

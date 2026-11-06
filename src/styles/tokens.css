@@ -1,0 +1,48 @@
+:root {
+  /* Surfaces — void to slate, mirroring DESIGN.md */
+  --bg-0: #08090a;
+  --bg-1: #0f1011;
+  --bg-2: #161718;
+  --bg-3: #23252a;
+  --bg-4: #2b2e33;
+
+  --border-subtle: #1d1f23;
+  --border: #23252a;
+  --border-strong: #383b3f;
+
+  /* Text — paper, mist, fog, ash */
+  --text-0: #ffffff;
+  --text-1: #d0d6e0;
+  --text-2: #8a8f98;
+  --text-3: #62666d;
+
+  /* Single functional accent — acid lime */
+  --accent: #e4f222;
+  --accent-hover: #f1fb5b;
+  --accent-bg: rgba(228, 242, 34, 0.1);
+  --accent-border: rgba(228, 242, 34, 0.35);
+
+  /* Critical tier identity — coral red */
+  --critical: #eb5757;
+  --critical-bg: rgba(235, 87, 87, 0.1);
+  --critical-border: rgba(235, 87, 87, 0.34);
+
+  /* Status */
+  --success: #27a644;
+  --warning: #e4f222;
+  --danger: #eb5757;
+  --success-border: rgba(39, 166, 68, 0.42);
+  --warning-border: rgba(228, 242, 34, 0.35);
+
+  /* Radii — 4 badges, 6 controls, 12 cards, full pills */
+  --radius-xs: 4px;
+  --radius-sm: 6px;
+  --radius-md: 6px;
+  --radius-lg: 12px;
+  --radius-xl: 12px;
+  --radius-full: 9999px;
+
+  /* Elevation — hairlines and inner highlights, not drop shadows */
+  --shadow-sm: rgba(0, 0, 0, 0.4) 0 2px 4px 0;
+  --shadow-inset: inset 0 1px 0 rgba(255, 255, 255, 0.04);
+}
