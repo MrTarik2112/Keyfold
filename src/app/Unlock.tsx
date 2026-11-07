@@ -1,5 +1,5 @@
 import { motion } from 'framer-motion';
-import { ArrowRight, KeyRound, LifeBuoy, ShieldCheck } from 'lucide-react';
+import { AlertCircle, ArrowRight, KeyRound, LifeBuoy, ShieldCheck, Trash2, X } from 'lucide-react';
 import { useState, type FormEvent } from 'react';
 
 import { Button, Input, PasswordInput } from '@/components/ui';
@@ -9,12 +9,21 @@ import { useApp } from '@/store/app';
 export function UnlockScreen() {
   const unlock = useApp((state) => state.unlock);
   const unlockRecovery = useApp((state) => state.unlockRecovery);
+  const deleteVault = useApp((state) => state.deleteVault);
   const [mode, setMode] = useState<'password' | 'recovery'>('password');
   const [password, setPassword] = useState('');
   const [recoveryKey, setRecoveryKey] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [attempt, setAttempt] = useState(0);
   const [busy, setBusy] = useState(false);
+
+  /* ---------- Hesap sıfırlama / vault silme akışı ---------- */
+  const [deleteOpen, setDeleteOpen] = useState(false);
+  const [deleteStep, setDeleteStep] = useState(0); // 0..5 onay, 6 = işlem çalışır
+  const [deleteMaster, setDeleteMaster] = useState('');
+  const [deleteCritical, setDeleteCritical] = useState('');
+  const [deleteError, setDeleteError] = useState<string | null>(null);
+  const [deleteBusy, setDeleteBusy] = useState(false);
 
   const rateLimited = error?.startsWith('Too many failed attempts') ?? false;
 
@@ -47,6 +56,48 @@ export function UnlockScreen() {
     setError(null);
     setPassword('');
     setRecoveryKey('');
+  }
+
+  async function handleDeleteConfirm() {
+    setDeleteError(null);
+    // 6. onayda işlemi çalıştır, öncekiler sayacı artırır
+    if (deleteStep < 5) {
+      setDeleteStep((value) => value + 1);
+      return;
+    }
+    if (!deleteMaster || !deleteCritical) {
+      setDeleteError('Both passwords are required.');
+      return;
+    }
+    setDeleteBusy(true);
+    try {
+      await deleteVault(deleteMaster, deleteCritical);
+      setDeleteOpen(false);
+      setDeleteStep(0);
+      setDeleteMaster('');
+      setDeleteCritical('');
+      setDeleteError(null);
+    } catch (caught) {
+      setDeleteError(errorMessage(caught));
+    } finally {
+      setDeleteBusy(false);
+    }
+  }
+
+  function openDeleteFlow() {
+    setDeleteOpen(true);
+    setDeleteStep(0);
+    setDeleteMaster('');
+    setDeleteCritical('');
+    setDeleteError(null);
+  }
+
+  function closeDeleteFlow() {
+    setDeleteOpen(false);
+    setDeleteStep(0);
+    setDeleteMaster('');
+    setDeleteCritical('');
+    setDeleteError(null);
   }
 
   return (
@@ -116,7 +167,9 @@ export function UnlockScreen() {
             size="md"
             loading={busy}
             disabled={
-              busy || (mode === 'password' ? password.length === 0 : recoveryKey.length === 0)
+              deleteOpen ||
+              busy ||
+              (mode === 'password' ? password.length === 0 : recoveryKey.length === 0)
             }
             className="mt-4 w-full"
           >
@@ -127,10 +180,81 @@ export function UnlockScreen() {
           <button
             type="button"
             onClick={() => switchMode(mode === 'password' ? 'recovery' : 'password')}
-            className="mt-4 flex w-full items-center justify-center gap-1.5 text-[12px] text-text-2 transition-colors hover:text-text-0"
+            disabled={deleteOpen}
+            className="mt-4 flex w-full items-center justify-center gap-1.5 text-[12px] text-text-2 transition-colors hover:text-text-0 disabled:opacity-40 disabled:pointer-events-none"
           >
             {mode === 'password' ? <LifeBuoy size={13} /> : <KeyRound size={13} />}
             {mode === 'password' ? 'Use recovery key instead' : 'Use master password instead'}
+          </button>
+
+          {/* ---------- Hesap sıfırlama bölümü ---------- */}
+          {deleteOpen ? (
+            <div className="mt-6 rounded-sm border border-[color:var(--critical-border)] bg-[rgba(235,87,87,0.06)] p-4 shadow-[var(--shadow-inset)]">
+              <div className="flex items-center gap-2 mb-3">
+                <AlertCircle size={14} className="text-critical" />
+                <h3 className="text-[13px] font-medium text-critical">Hesabı sıfırla</h3>
+              </div>
+              <p className="mb-4 text-[12px] leading-relaxed text-text-2">
+                Tüm anahtarlar, klasörler ve ayarlar kalıcı olarak silinecektir. Bu işlem geri alınamaz.
+              </p>
+
+              <div className="space-y-3 mb-4">
+                <PasswordInput
+                  aria-label="Standard password"
+                  placeholder="Master password"
+                  value={deleteMaster}
+                  onChange={(event) => setDeleteMaster(event.target.value)}
+                  disabled={deleteBusy || deleteStep === 5}
+                />
+                <PasswordInput
+                  aria-label="Critical password"
+                  placeholder="Critical password"
+                  value={deleteCritical}
+                  onChange={(event) => setDeleteCritical(event.target.value)}
+                  disabled={deleteBusy || deleteStep === 5}
+                />
+              </div>
+
+              {deleteError ? (
+                <p className="mt-2 text-[12px] leading-relaxed text-critical">{deleteError}</p>
+              ) : null}
+
+              <div className="mb-3">
+                <span className="block text-[12px] font-medium text-text-1 mb-1.5">
+                  Onay ({deleteStep + 1}/6)
+                </span>
+                <Button
+                  variant="danger"
+                  size="md"
+                  loading={deleteBusy}
+                  disabled={
+                    deleteBusy ||
+                    (deleteStep === 5 && (!deleteMaster || !deleteCritical))
+                  }
+                  onClick={handleDeleteConfirm}
+                  className="w-full"
+                >
+                  {deleteStep < 5 ? `Evet, eminim (${deleteStep + 2}/6)` : 'Evet, kalıcı olarak sil'}
+                </Button>
+              </div>
+
+              <button
+                type="button"
+                onClick={closeDeleteFlow}
+                className="mt-3 flex w-full items-center justify-center gap-1.5 text-[11.5px] font-medium text-text-2 transition-colors hover:text-text-0"
+              >
+                <X size={13} /> İptal et
+              </button>
+            </div>
+          ) : null}
+
+          {/* ---------- Sıfırlama tetikleyici butonu ---------- */}
+          <button
+            type="button"
+            onClick={openDeleteFlow}
+            className="mt-4 flex w-full items-center justify-center gap-1.5 text-[11px] font-medium text-critical transition-colors hover:text-critical-hover disabled:opacity-40 disabled:pointer-events-none"
+          >
+            <Trash2 size={12} /> Hesabı sıfırla / tüm veriyi sil
           </button>
         </motion.form>
 
