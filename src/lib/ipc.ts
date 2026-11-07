@@ -82,6 +82,7 @@ export const api = {
   importBackup: (path: string) => call<void>('import_backup', { path }),
   deleteVault: (masterPassword: string, criticalPassword: string) =>
     call<void>('delete_vault', { masterPassword, criticalPassword }),
+  resetVault: () => call<void>('reset_vault'),
   saveRecoveryKey: (path: string, key: string) => call<void>('save_recovery_key', { path, key }),
   copyRecoveryKey: (key: string) => call<CopyResponse>('copy_recovery_key', { key }),
   openVaultLocation: () => call<void>('open_vault_location'),

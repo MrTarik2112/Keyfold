@@ -1538,6 +1538,16 @@ pub fn delete_vault<R: Runtime>(
     Ok(())
 }
 
+/// Factory-reset used when the user forgot both passwords. No authentication is
+/// required: the vault is already locked and its contents are unrecoverable
+/// without the passwords anyway. Deletes the vault file and its backup.
+#[tauri::command]
+pub fn reset_vault(state: State<'_, AppState>) -> Result<()> {
+    storage::delete(&state.vault_path)?;
+    *lock_or_recover(&state.header) = None;
+    Ok(())
+}
+
 #[tauri::command]
 pub fn save_recovery_key(path: String, key: String) -> Result<()> {
     let key = SecretString::from(key);

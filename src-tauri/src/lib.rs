@@ -100,6 +100,7 @@ pub fn run() {
             commands::export_backup,
             commands::import_backup,
             commands::delete_vault,
+            commands::reset_vault,
             commands::save_recovery_key,
             commands::copy_recovery_key,
             commands::open_vault_location,

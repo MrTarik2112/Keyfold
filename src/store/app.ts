@@ -98,6 +98,7 @@ interface AppStore {
   retune: (master: string, critical: string) => Promise<KdfParams>;
   importBackup: (path: string) => Promise<void>;
   deleteVault: (master: string, critical: string) => Promise<void>;
+  resetVault: () => Promise<void>;
   toast: (message: string, tone?: ToastTone) => void;
   dismissToast: (id: number) => void;
   setBusy: (busy: boolean) => void;
@@ -390,6 +391,19 @@ export const useApp = create<AppStore>((set, get) => ({
       selectedFolderId: null,
     });
     get().toast('Vault deleted. A new one can be created now.', 'info');
+  },
+
+  resetVault: async () => {
+    await api.resetVault();
+    get().hideSecrets();
+    set({
+      route: 'onboarding',
+      workspace: null,
+      session: EMPTY_SESSION,
+      kdf: null,
+      selectedFolderId: null,
+    });
+    get().toast('Vault reset. A new one can be created now.', 'info');
   },
 
   toast: (message, tone = 'success') => {

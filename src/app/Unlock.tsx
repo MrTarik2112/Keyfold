@@ -1,15 +1,25 @@
 import { motion } from 'framer-motion';
-import { AlertCircle, ArrowRight, KeyRound, LifeBuoy, ShieldCheck, Trash2, X } from 'lucide-react';
+import {
+  AlertCircle,
+  ArrowRight,
+  KeyRound,
+  LifeBuoy,
+  ShieldCheck,
+  Trash2,
+} from 'lucide-react';
 import { useState, type FormEvent } from 'react';
 
 import { Button, Input, PasswordInput } from '@/components/ui';
 import { errorMessage } from '@/lib/errors';
 import { useApp } from '@/store/app';
 
+const RESET_CONFIRM_PHRASE = 'I ACCEPT RESPONSIBILITY';
+
 export function UnlockScreen() {
   const unlock = useApp((state) => state.unlock);
   const unlockRecovery = useApp((state) => state.unlockRecovery);
-  const deleteVault = useApp((state) => state.deleteVault);
+  const resetVault = useApp((state) => state.resetVault);
+  const info = useApp((state) => state.info);
   const [mode, setMode] = useState<'password' | 'recovery'>('password');
   const [password, setPassword] = useState('');
   const [recoveryKey, setRecoveryKey] = useState('');
@@ -17,13 +27,12 @@ export function UnlockScreen() {
   const [attempt, setAttempt] = useState(0);
   const [busy, setBusy] = useState(false);
 
-  /* ---------- Hesap sıfırlama / vault silme akışı ---------- */
-  const [deleteOpen, setDeleteOpen] = useState(false);
-  const [deleteStep, setDeleteStep] = useState(0); // 0..5 onay, 6 = işlem çalışır
-  const [deleteMaster, setDeleteMaster] = useState('');
-  const [deleteCritical, setDeleteCritical] = useState('');
-  const [deleteError, setDeleteError] = useState<string | null>(null);
-  const [deleteBusy, setDeleteBusy] = useState(false);
+  /* ---------- Hesap sıfırlama / factory reset akışı (şifre unutulduğunda) ---------- */
+  const [resetOpen, setResetOpen] = useState(false);
+  const [resetStep, setResetStep] = useState(0); // 0..4 onay, 5 = cümle gir, 6 = işlem
+  const [resetConfirm, setResetConfirm] = useState('');
+  const [resetError, setResetError] = useState<string | null>(null);
+  const [resetBusy, setResetBusy] = useState(false);
 
   const rateLimited = error?.startsWith('Too many failed attempts') ?? false;
 
@@ -58,46 +67,48 @@ export function UnlockScreen() {
     setRecoveryKey('');
   }
 
-  async function handleDeleteConfirm() {
-    setDeleteError(null);
-    // 6. onayda işlemi çalıştır, öncekiler sayacı artırır
-    if (deleteStep < 5) {
-      setDeleteStep((value) => value + 1);
+  async function handleResetNext() {
+    setResetError(null);
+    if (resetStep < 5) {
+      setResetStep((value) => value + 1);
       return;
     }
-    if (!deleteMaster || !deleteCritical) {
-      setDeleteError('Both passwords are required.');
+    if (resetStep === 5) {
+      // Cümle onayı
+      if (resetConfirm.trim().toUpperCase() !== RESET_CONFIRM_PHRASE) {
+        setResetError('Type the phrase exactly: ' + RESET_CONFIRM_PHRASE);
+        return;
+      }
+      setResetStep(6);
       return;
     }
-    setDeleteBusy(true);
+    // resetStep === 6 → işlemi çalıştır
+    setResetBusy(true);
     try {
-      await deleteVault(deleteMaster, deleteCritical);
-      setDeleteOpen(false);
-      setDeleteStep(0);
-      setDeleteMaster('');
-      setDeleteCritical('');
-      setDeleteError(null);
+      await resetVault();
+      setResetOpen(false);
+      setResetStep(0);
+      setResetConfirm('');
+      setResetError(null);
     } catch (caught) {
-      setDeleteError(errorMessage(caught));
+      setResetError(errorMessage(caught));
     } finally {
-      setDeleteBusy(false);
+      setResetBusy(false);
     }
   }
 
-  function openDeleteFlow() {
-    setDeleteOpen(true);
-    setDeleteStep(0);
-    setDeleteMaster('');
-    setDeleteCritical('');
-    setDeleteError(null);
+  function openResetFlow() {
+    setResetOpen(true);
+    setResetStep(0);
+    setResetConfirm('');
+    setResetError(null);
   }
 
-  function closeDeleteFlow() {
-    setDeleteOpen(false);
-    setDeleteStep(0);
-    setDeleteMaster('');
-    setDeleteCritical('');
-    setDeleteError(null);
+  function closeResetFlow() {
+    setResetOpen(false);
+    setResetStep(0);
+    setResetConfirm('');
+    setResetError(null);
   }
 
   return (
@@ -119,6 +130,19 @@ export function UnlockScreen() {
               : 'Use the recovery key you saved when you created this vault.'}
           </p>
         </div>
+
+        {/* ---------- Vault bilgi satırı ---------- */}
+        {info && (
+          <div className="mb-4 flex items-center justify-between rounded-sm border border-line-subtle bg-[rgba(255,255,255,0.02)] px-3.5 py-2">
+            <div className="flex items-center gap-2">
+              <ShieldCheck size={12} className="text-text-2" aria-hidden />
+              <span className="text-[11px] text-text-2">Encrypted vault</span>
+            </div>
+            <span className="text-[11px] text-text-2">
+              {info.version ? `v${info.version}` : 'Keyfold'}
+            </span>
+          </div>
+        )}
 
         <motion.form
           key={attempt}
@@ -167,7 +191,7 @@ export function UnlockScreen() {
             size="md"
             loading={busy}
             disabled={
-              deleteOpen ||
+              resetOpen ||
               busy ||
               (mode === 'password' ? password.length === 0 : recoveryKey.length === 0)
             }
@@ -180,81 +204,102 @@ export function UnlockScreen() {
           <button
             type="button"
             onClick={() => switchMode(mode === 'password' ? 'recovery' : 'password')}
-            disabled={deleteOpen}
+            disabled={resetOpen}
             className="mt-4 flex w-full items-center justify-center gap-1.5 text-[12px] text-text-2 transition-colors hover:text-text-0 disabled:opacity-40 disabled:pointer-events-none"
           >
             {mode === 'password' ? <LifeBuoy size={13} /> : <KeyRound size={13} />}
             {mode === 'password' ? 'Use recovery key instead' : 'Use master password instead'}
           </button>
 
-          {/* ---------- Hesap sıfırlama bölümü ---------- */}
-          {deleteOpen ? (
+          {/* ---------- Şifre unutma / factory reset bölümü ---------- */}
+          {resetOpen ? (
             <div className="mt-6 rounded-sm border border-[color:var(--critical-border)] bg-[rgba(235,87,87,0.06)] p-4 shadow-[var(--shadow-inset)]">
               <div className="flex items-center gap-2 mb-3">
                 <AlertCircle size={14} className="text-critical" />
-                <h3 className="text-[13px] font-medium text-critical">Hesabı sıfırla</h3>
+                <h3 className="text-[13px] font-medium text-critical">Forgot your password?</h3>
               </div>
               <p className="mb-4 text-[12px] leading-relaxed text-text-2">
-                Tüm anahtarlar, klasörler ve ayarlar kalıcı olarak silinecektir. Bu işlem geri alınamaz.
+                Keyfold has no accounts and no network, so a forgotten password cannot be
+                recovered. Resetting deletes every key, folder and setting permanently.
               </p>
 
-              <div className="space-y-3 mb-4">
-                <PasswordInput
-                  aria-label="Standard password"
-                  placeholder="Master password"
-                  value={deleteMaster}
-                  onChange={(event) => setDeleteMaster(event.target.value)}
-                  disabled={deleteBusy || deleteStep === 5}
-                />
-                <PasswordInput
-                  aria-label="Critical password"
-                  placeholder="Critical password"
-                  value={deleteCritical}
-                  onChange={(event) => setDeleteCritical(event.target.value)}
-                  disabled={deleteBusy || deleteStep === 5}
-                />
-              </div>
-
-              {deleteError ? (
-                <p className="mt-2 text-[12px] leading-relaxed text-critical">{deleteError}</p>
+              {resetStep < 5 ? (
+                <>
+                  <div className="mb-3">
+                    <span className="block text-[12px] font-medium text-text-1 mb-1.5">
+                      Confirm reset ({resetStep + 1}/5)
+                    </span>
+                    <Button
+                      variant="danger"
+                      size="md"
+                      loading={resetBusy}
+                      disabled={resetBusy}
+                      onClick={handleResetNext}
+                      className="w-full"
+                    >
+                      Yes, reset everything ({resetStep + 2}/5)
+                    </Button>
+                  </div>
+                </>
+              ) : resetStep === 5 ? (
+                <>
+                  <div className="mb-3">
+                    <span className="block text-[12px] font-medium text-text-1 mb-1.5">
+                      Type the phrase below to accept responsibility
+                    </span>
+                    <Input
+                      autoFocus
+                      placeholder={RESET_CONFIRM_PHRASE}
+                      value={resetConfirm}
+                      onChange={(event) => setResetConfirm(event.target.value)}
+                      disabled={resetBusy}
+                      className="secret uppercase text-[12px]"
+                    />
+                    {resetError ? (
+                      <p className="mt-2 text-[12px] leading-relaxed text-critical">
+                        {resetError}
+                      </p>
+                    ) : null}
+                  </div>
+                  <div className="mt-3 flex items-center justify-between gap-2">
+                    <Button
+                      variant="secondary"
+                      size="md"
+                      loading={resetBusy}
+                      disabled={
+                        resetBusy ||
+                        resetConfirm.trim().toUpperCase() !== RESET_CONFIRM_PHRASE
+                      }
+                      onClick={handleResetNext}
+                    >
+                      I understand, reset vault
+                    </Button>
+                    <button
+                      type="button"
+                      onClick={closeResetFlow}
+                      className="text-[11.5px] text-text-2 hover:text-text-0"
+                    >
+                      Cancel
+                    </button>
+                  </div>
+                </>
               ) : null}
 
-              <div className="mb-3">
-                <span className="block text-[12px] font-medium text-text-1 mb-1.5">
-                  Onay ({deleteStep + 1}/6)
-                </span>
-                <Button
-                  variant="danger"
-                  size="md"
-                  loading={deleteBusy}
-                  disabled={
-                    deleteBusy ||
-                    (deleteStep === 5 && (!deleteMaster || !deleteCritical))
-                  }
-                  onClick={handleDeleteConfirm}
-                  className="w-full"
-                >
-                  {deleteStep < 5 ? `Evet, eminim (${deleteStep + 2}/6)` : 'Evet, kalıcı olarak sil'}
-                </Button>
-              </div>
-
-              <button
-                type="button"
-                onClick={closeDeleteFlow}
-                className="mt-3 flex w-full items-center justify-center gap-1.5 text-[11.5px] font-medium text-text-2 transition-colors hover:text-text-0"
-              >
-                <X size={13} /> İptal et
-              </button>
+              {resetStep === 6 && !resetBusy ? (
+                <div className="mt-3 rounded-sm border border-line bg-bg-1 p-3 text-center">
+                  <p className="text-[12px] text-text-0">Vault reset. Creating a new one…</p>
+                </div>
+              ) : null}
             </div>
           ) : null}
 
-          {/* ---------- Sıfırlama tetikleyici butonu ---------- */}
+          {/* ---------- Şifre unutma tetikleyici ---------- */}
           <button
             type="button"
-            onClick={openDeleteFlow}
+            onClick={openResetFlow}
             className="mt-4 flex w-full items-center justify-center gap-1.5 text-[11px] font-medium text-critical transition-colors hover:text-critical-hover disabled:opacity-40 disabled:pointer-events-none"
           >
-            <Trash2 size={12} /> Hesabı sıfırla / tüm veriyi sil
+            <Trash2 size={12} /> Forgot password? Reset vault
           </button>
         </motion.form>
 

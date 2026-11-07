@@ -704,6 +704,11 @@ export async function previewInvoke(command: string, rawArgs?: Args): Promise<un
       unlocked = false;
       criticalUnlocked = false;
       return null;
+    case 'reset_vault':
+      vault = null;
+      unlocked = false;
+      criticalUnlocked = false;
+      return null;
     case 'open_vault_location':
       return null;
     default:
