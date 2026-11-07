@@ -2,6 +2,8 @@ node_modules
 dist
 dist-ssr
 src-tauri/target
+target
+*.exe
 *.local
 .DS_Store
 Thumbs.db
