@@ -68,6 +68,7 @@ pub fn run() {
         .invoke_handler(tauri::generate_handler![
             commands::vault_exists,
             commands::app_info,
+            commands::vault_stats,
             commands::create_vault,
             commands::unlock,
             commands::unlock_critical,

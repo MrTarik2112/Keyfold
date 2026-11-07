@@ -74,6 +74,19 @@ export interface AppInfo {
   vaultPath: string;
 }
 
+export interface TagStat {
+  name: string;
+  count: number;
+}
+
+export interface VaultStats {
+  standardKeys: number;
+  standardFolders: number;
+  criticalKeys: number;
+  criticalFolders: number;
+  tags: TagStat[];
+}
+
 export interface KdfParams {
   memoryKib: number;
   iterations: number;

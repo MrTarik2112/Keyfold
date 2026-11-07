@@ -12,6 +12,7 @@ import {
   Search,
   Shield,
   Trash2,
+  X,
 } from 'lucide-react';
 import { useMemo, useState, type DragEvent } from 'react';
 
@@ -66,6 +67,7 @@ export function Content() {
   const [deleteTarget, setDeleteTarget] = useState<DeleteTarget | null>(null);
   const [sort, setSort] = useState<SortMode>('updated');
   const [onlyExpiring, setOnlyExpiring] = useState(false);
+  const [tagFilter, setTagFilter] = useState<string | null>(null);
   const [dragFolder, setDragFolder] = useState<string | null>(null);
 
   const locked = tier === 'critical' && !workspace?.criticalUnlocked;
@@ -79,9 +81,11 @@ export function Content() {
   const sortKeys = useMemo(
     () =>
       (keys: KeyView[]): KeyView[] => {
-        const filtered = onlyExpiring
-          ? keys.filter((key) => expiryState(key.expiresAt) !== 'none')
-          : keys;
+        const filtered = keys.filter((key) => {
+          if (tagFilter && !key.tags.includes(tagFilter)) return false;
+          if (onlyExpiring) return expiryState(key.expiresAt) !== 'none';
+          return true;
+        });
         return [...filtered].sort((a, b) => {
           if (sort === 'name') return a.label.localeCompare(b.label);
           if (sort === 'expiry') {
@@ -252,6 +256,15 @@ export function Content() {
                 <CalendarClock size={13} />
                 Expiring
               </button>
+              {tagFilter ? (
+                <button
+                  type="button"
+                  onClick={() => setTagFilter(null)}
+                  className="inline-flex h-8 items-center gap-1.5 rounded-sm border border-[color:var(--critical-border)] bg-critical-bg px-2.5 text-[12px] text-critical"
+                >
+                  <X size={12} /> {tagFilter}
+                </button>
+              ) : null}
               <div
                 className="flex rounded-sm border border-line bg-bg-2 p-0.5"
                 role="group"
@@ -320,6 +333,7 @@ export function Content() {
                   onEdit={(entry) => setKeyDialog({ open: true, entry })}
                   onMove={setMoveEntry}
                   onDelete={requestDeleteKey}
+                  onTagClick={setTagFilter}
                 />
                 <button
                   type="button"
@@ -416,6 +430,7 @@ export function Content() {
                   onEdit={(entry) => setKeyDialog({ open: true, entry })}
                   onMove={setMoveEntry}
                   onDelete={requestDeleteKey}
+                  onTagClick={setTagFilter}
                 />
               )}
             </section>
@@ -502,6 +517,7 @@ function KeyCollection({
   onEdit,
   onMove,
   onDelete,
+  onTagClick,
 }: {
   keys: KeyView[];
   tier: Tier;
@@ -510,6 +526,7 @@ function KeyCollection({
   onEdit: (entry: KeyView) => void;
   onMove: (entry: KeyView) => void;
   onDelete: (entry: KeyView) => void;
+  onTagClick: (tag: string) => void;
 }) {
   if (viewMode === 'cards') {
     return (
@@ -524,6 +541,7 @@ function KeyCollection({
             onEdit={() => onEdit(entry)}
             onMove={() => onMove(entry)}
             onDelete={() => onDelete(entry)}
+            onTagClick={onTagClick}
           />
         ))}
       </div>
@@ -541,6 +559,7 @@ function KeyCollection({
           onEdit={() => onEdit(entry)}
           onMove={() => onMove(entry)}
           onDelete={() => onDelete(entry)}
+          onTagClick={onTagClick}
         />
       ))}
     </div>

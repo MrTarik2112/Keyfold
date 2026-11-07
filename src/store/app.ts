@@ -13,6 +13,7 @@ import type {
   SessionStatus,
   Settings,
   Tier,
+  VaultStats,
   ViewMode,
   WorkspaceView,
 } from '@/lib/types';
@@ -53,6 +54,7 @@ interface AppStore {
   session: SessionStatus;
   info: AppInfo | null;
   kdf: KdfParams | null;
+  vaultStats: VaultStats | null;
   selectedTier: Tier;
   selectedFolderId: string | null;
   viewMode: ViewMode;
@@ -94,6 +96,7 @@ interface AppStore {
   saveSettings: (settings: Settings) => Promise<void>;
   changeMaster: (current: string, next: string) => Promise<void>;
   changeCritical: (current: string, next: string) => Promise<void>;
+  fetchStats: () => Promise<void>;
   regenerateRecovery: (master: string, critical: string) => Promise<string>;
   retune: (master: string, critical: string) => Promise<KdfParams>;
   importBackup: (path: string) => Promise<void>;
@@ -114,6 +117,7 @@ export const useApp = create<AppStore>((set, get) => ({
   session: EMPTY_SESSION,
   info: null,
   kdf: null,
+  vaultStats: null,
   selectedTier: 'standard',
   selectedFolderId: null,
   viewMode: storedViewMode(),
@@ -135,6 +139,7 @@ export const useApp = create<AppStore>((set, get) => ({
         try {
           const workspace = await api.workspace();
           applyPreferences(workspace.settings);
+          const stats = await api.vaultStats().catch(() => null);
           set({
             booted: true,
             info,
@@ -143,6 +148,7 @@ export const useApp = create<AppStore>((set, get) => ({
             workspace,
             settings: workspace.settings,
             session: await api.sessionStatus(),
+            vaultStats: stats,
           });
           return;
         } catch {
@@ -173,32 +179,38 @@ export const useApp = create<AppStore>((set, get) => ({
   unlock: async (password) => {
     const workspace = await api.unlock(password);
     applyPreferences(workspace.settings);
+    const stats = await api.vaultStats().catch(() => null);
     set({
       route: 'workspace',
       workspace,
       settings: workspace.settings,
       session: await api.sessionStatus(),
+      vaultStats: stats,
     });
   },
 
   unlockCritical: async (password) => {
     const workspace = await api.unlockCritical(password);
+    const stats = await api.vaultStats().catch(() => null);
     set({
       workspace,
       session: await api.sessionStatus(),
       selectedTier: 'critical',
       selectedFolderId: null,
+      vaultStats: stats,
     });
   },
 
   unlockRecovery: async (key) => {
     const workspace = await api.unlockRecovery(key);
     applyPreferences(workspace.settings);
+    const stats = await api.vaultStats().catch(() => null);
     set({
       route: 'workspace',
       workspace,
       settings: workspace.settings,
       session: await api.sessionStatus(),
+      vaultStats: stats,
     });
   },
 
@@ -352,6 +364,11 @@ export const useApp = create<AppStore>((set, get) => ({
     await api.changeCritical(current, next);
     await get().refresh();
     get().toast('Critical password changed.');
+  },
+
+  fetchStats: async () => {
+    const stats = await api.vaultStats().catch(() => null);
+    set({ vaultStats: stats });
   },
 
   regenerateRecovery: async (master, critical) => {

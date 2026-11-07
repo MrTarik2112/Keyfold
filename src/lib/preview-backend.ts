@@ -696,6 +696,38 @@ export async function previewInvoke(command: string, rawArgs?: Args): Promise<un
       return kdf;
     case 'retune_argon2':
       return kdf;
+    case 'vault_stats': {
+      const data = requireUnlocked();
+      const tagCounts = new Map<string, number>();
+      const scan = (tier: PreviewTier): void => {
+        tier.keys.forEach((key) => {
+          for (const tag of key.tags) {
+            tagCounts.set(tag, (tagCounts.get(tag) ?? 0) + 1);
+          }
+        });
+        tier.folders.forEach((folder) => {
+          folder.keys.forEach((key) => {
+            for (const tag of key.tags) {
+              tagCounts.set(tag, (tagCounts.get(tag) ?? 0) + 1);
+            }
+          });
+        });
+      };
+      scan(data.standard);
+      if (data.criticalTier) scan(data.criticalTier);
+      const tags = Array.from(tagCounts.entries())
+        .map(([name, count]) => ({ name, count }))
+        .sort((a, b) => b.count - a.count || a.name.localeCompare(b.name));
+      return {
+        standardKeys: data.standard.keys.length + data.standard.folders.reduce((sum, f) => sum + f.keys.length, 0),
+        standardFolders: data.standard.folders.length,
+        criticalKeys: data.criticalTier
+          ? data.criticalTier.keys.length + data.criticalTier.folders.reduce((sum, f) => sum + f.keys.length, 0)
+          : 0,
+        criticalFolders: data.criticalTier ? data.criticalTier.folders.length : 0,
+        tags,
+      };
+    }
     case 'export_backup':
     case 'import_backup':
       throw new Error('Encrypted backups are available in the desktop app. This is a UI preview.');

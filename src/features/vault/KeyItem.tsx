@@ -18,6 +18,7 @@ interface KeyItemProps {
   onEdit: () => void;
   onMove: () => void;
   onDelete: () => void;
+  onTagClick?: (tag: string) => void;
   draggable?: boolean;
 }
 
@@ -29,6 +30,7 @@ export function KeyItem({
   onEdit,
   onMove,
   onDelete,
+  onTagClick,
   draggable = true,
 }: KeyItemProps) {
   const copySecret = useApp((state) => state.copySecret);
@@ -128,7 +130,11 @@ export function KeyItem({
         </>
       ) : null}
       {entry.tags.slice(0, variant === 'card' ? 2 : 3).map((tag) => (
-        <span key={tag} className="rounded bg-bg-3 px-1.5 py-0.5 text-[10.5px] text-text-2">
+        <span
+          key={tag}
+          onClick={() => void onTagClick?.(tag)}
+          className="rounded bg-bg-3 px-1.5 py-0.5 text-[10.5px] text-text-2 cursor-pointer hover:text-text-0 hover:bg-bg-2 transition-colors"
+        >
           {tag}
         </span>
       ))}

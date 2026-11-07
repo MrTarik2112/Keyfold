@@ -1,5 +1,6 @@
 import { open, save } from '@tauri-apps/plugin-dialog';
 import {
+  Activity,
   Check,
   ClipboardCopy,
   Database,
@@ -927,6 +928,18 @@ function DeleteVaultDialog({
 
 function AboutTab() {
   const info = useApp((state) => state.info);
+  const stats = useApp((state) => state.vaultStats);
+  const fetchStats = useApp((state) => state.fetchStats);
+
+  useEffect(() => {
+    void fetchStats();
+  }, [fetchStats]);
+
+  const totalKeys = (stats?.standardKeys ?? 0) + (stats?.criticalKeys ?? 0);
+  const totalFolders = (stats?.standardFolders ?? 0) + (stats?.criticalFolders ?? 0);
+  const totalTags = stats?.tags.length ?? 0;
+  const topTag = stats?.tags[0];
+
   return (
     <div className="space-y-5">
       <div>
@@ -953,6 +966,38 @@ function AboutTab() {
         </Row>
       </Section>
 
+      {stats ? (
+        <Section title="Vault statistics">
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 py-3">
+            <StatCard title="Total keys" value={totalKeys} icon={<Activity size={14} className="text-text-1" />} />
+            <StatCard title="Total folders" value={totalFolders} icon={<Database size={14} className="text-text-1" />} />
+            <StatCard title="Tags" value={totalTags} icon={<TagIcon className="text-text-1" />} />
+            <StatCard title="Encryption" value="Argon2id + AEAD" icon={<ShieldCheck size={14} className="text-accent" />} subtitle={false} />
+          </div>
+          {stats.tags.length > 0 && (
+            <div className="mt-4 py-3">
+              <h3 className="text-[10px] font-medium uppercase tracking-[0.14em] text-text-2 mb-2">Top tags</h3>
+              <div className="flex flex-wrap gap-2">
+                {stats.tags.slice(0, 8).map((tag: { name: string; count: number }) => (
+                  <Badge key={tag.name} tone={tag === topTag ? 'accent' : 'neutral'} className="text-[11px] px-2.5 py-1">
+                    {tag.name} <span className="text-text-3">({tag.count})</span>
+                  </Badge>
+                ))}
+              </div>
+            </div>
+          )}
+        </Section>
+      ) : null}
+
+      <Section title="Keyboard shortcuts">
+        <div className="divide-y divide-line-subtle py-3">
+          <ShortcutRow keys={['Ctrl', 'K']} label="Search keys" />
+          <ShortcutRow keys={['Ctrl', 'N']} label="New key" />
+          <ShortcutRow keys={['Escape']} label="Hide revealed value" />
+          <ShortcutRow keys={['Ctrl', 'C']} label="Copy selected key value" />
+        </div>
+      </Section>
+
       <Section title="Security summary">
         <div className="space-y-2.5 py-3 text-[12px] leading-relaxed text-text-2">
           <p>
@@ -971,5 +1016,61 @@ function AboutTab() {
         </div>
       </Section>
     </div>
+  );
+}
+
+function StatCard({
+  title,
+  value,
+  icon,
+  subtitle = true,
+}: {
+  title: string;
+  value: number | string;
+  icon: React.ReactNode;
+  subtitle?: boolean;
+}) {
+  return (
+    <div className="rounded-sm border border-line bg-bg-1 p-3">
+      <div className="flex items-center gap-2">
+        <div className="flex h-6 w-6 items-center justify-center rounded-sm bg-[rgba(255,255,255,0.02)] text-text-2">
+          {icon}
+        </div>
+        <div>
+          <p className="text-[11px] font-medium text-text-0">{value}</p>
+          {subtitle ? <p className="text-[10px] text-text-2">{title}</p> : null}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function ShortcutRow({
+  keys,
+  label,
+}: {
+  keys: string[];
+  label: string;
+}) {
+  return (
+    <div className="flex items-center justify-between gap-4 py-1.5 px-1">
+      <span className="text-[12px] text-text-1">{label}</span>
+      <span className="flex gap-1">
+        {keys.map((key, i) => (
+          <kbd key={i} className="inline-flex h-5 min-w-5 items-center justify-center rounded-xs border border-line bg-bg-3 px-1 font-mono text-[10.5px] text-text-2">
+            {key}
+          </kbd>
+        ))}
+      </span>
+    </div>
+  );
+}
+
+function TagIcon({ className }: { className?: string }) {
+  return (
+    <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
+      <path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 16l5.59-5.59a2 2 0 0 1 0-2.83z" />
+      <path d="M7 7a2 2 0 0 1 2-2h2" />
+    </svg>
   );
 }

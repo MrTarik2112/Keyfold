@@ -16,6 +16,7 @@ import type {
   Settings,
   Tier,
   TierView,
+  VaultStats,
   WorkspaceView,
 } from './types';
 
@@ -42,6 +43,7 @@ async function call<T>(command: string, args?: Record<string, unknown>): Promise
 export const api = {
   vaultExists: () => call<boolean>('vault_exists'),
   appInfo: () => call<AppInfo>('app_info'),
+  vaultStats: () => call<VaultStats>('vault_stats'),
   createVault: (masterPassword: string, criticalPassword: string) =>
     call<CreateVaultResponse>('create_vault', { masterPassword, criticalPassword }),
   unlock: (password: string) => call<WorkspaceView>('unlock', { password }),

@@ -158,6 +158,23 @@ pub struct AppInfo {
     pub vault_path: String,
 }
 
+#[derive(Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct VaultStats {
+    pub standard_keys: usize,
+    pub standard_folders: usize,
+    pub critical_keys: usize,
+    pub critical_folders: usize,
+    pub tags: Vec<TagStat>,
+}
+
+#[derive(Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct TagStat {
+    pub name: String,
+    pub count: usize,
+}
+
 /* -------------------------------- helpers -------------------------------- */
 
 fn lock_or_recover<T>(mutex: &Mutex<T>) -> std::sync::MutexGuard<'_, T> {
@@ -470,6 +487,57 @@ pub fn app_info(state: State<'_, AppState>) -> AppInfo {
         format_version: FORMAT_VERSION,
         vault_path: state.vault_path.to_string_lossy().to_string(),
     }
+}
+
+/// Read-only snapshot of vault contents for the About screen. No secrets
+/// are returned — only counts and the distinct tag vocabulary.
+#[tauri::command]
+pub fn vault_stats(state: State<'_, AppState>) -> Result<VaultStats> {
+    state.session.read(|vault| {
+        let standard = &vault.standard;
+        let critical = vault.critical.as_ref();
+
+        let mut tag_counts: Vec<(String, usize)> = Vec::new();
+        let mut collect = |tier_data: &TierData| {
+            for folder in &tier_data.folders {
+                for key in &folder.keys {
+                    for tag in &key.tags {
+                        if let Some((_, count)) = tag_counts.iter_mut().find(|(t, _)| t == tag) {
+                            *count += 1;
+                        } else {
+                            tag_counts.push((tag.clone(), 1));
+                        }
+                    }
+                }
+            }
+            for key in &tier_data.keys {
+                for tag in &key.tags {
+                    if let Some((_, count)) = tag_counts.iter_mut().find(|(t, _)| t == tag) {
+                        *count += 1;
+                    } else {
+                        tag_counts.push((tag.clone(), 1));
+                    }
+                }
+            }
+        };
+
+        collect(standard);
+        if let Some(critical) = critical {
+            collect(critical);
+        }
+
+        tag_counts.sort_by(|a, b| b.1.cmp(&a.1).then(a.0.cmp(&b.0)));
+
+        Ok(VaultStats {
+            standard_keys: standard.keys.len() + standard.folders.iter().map(|f| f.keys.len()).sum::<usize>(),
+            standard_folders: standard.folders.len(),
+            critical_keys: critical
+                .map(|c| c.keys.len() + c.folders.iter().map(|f| f.keys.len()).sum::<usize>())
+                .unwrap_or(0),
+            critical_folders: critical.map(|c| c.folders.len()).unwrap_or(0),
+            tags: tag_counts.into_iter().map(|(name, count)| TagStat { name, count }).collect(),
+        })
+    })
 }
 
 #[tauri::command]
